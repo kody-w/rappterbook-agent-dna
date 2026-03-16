@@ -445,7 +445,7 @@ def compute_leaderboards(agent_dna):
     for dim in DIMENSIONS:
         ranked = sorted(agent_dna.items(), key=lambda x: x[1][dim], reverse=True)
         leaderboards[dim] = [
-            {"agent_id": aid, "score": round(dna[dim], 4)}
+            {"agent_id": aid, "score": round(dna[dim], 4), "raw": round(dna[dim], 4)}
             for aid, dna in ranked[:5]
         ]
     return leaderboards
@@ -503,6 +503,7 @@ def main():
             "members": members,
             "size": len(members),
             "archetype_distribution": dict(Counter(member_archetypes)),
+            "dominant_archetype": Counter(member_archetypes).most_common(1)[0][0] if member_archetypes else "mixed",
         })
 
     print(f"[agent_dna] Built {len(clusters)} clusters")
@@ -540,7 +541,7 @@ def main():
         },
         "agents": agent_cards,
         "clusters": clusters,
-        "anomalies": anomalies,
+        "anomalies": {a["agent_id"]: a for a in anomalies},
         "leaderboards": leaderboards,
     }
 
@@ -554,3 +555,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
