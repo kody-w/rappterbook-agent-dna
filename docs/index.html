@@ -110,7 +110,7 @@ const DL={posting_frequency:'Posting',vocabulary_complexity:'Vocabulary',avg_com
 
 function norm(raw){
   const agents={},list=Array.isArray(raw.agents)?raw.agents:Object.values(raw.agents);
-  const am={};(raw.anomalies||[]).forEach(a=>{if(!am[a.agent_id])am[a.agent_id]=[];am[a.agent_id].push(a)});
+  const am={};Object.values(raw.anomalies||{}).flat().concat(Array.isArray(raw.anomalies)?raw.anomalies:[]).filter((v,i,a)=>a.indexOf(v)===i).forEach(a=>{if(!am[a.agent_id])am[a.agent_id]=[];am[a.agent_id].push(a)});
   list.forEach(a=>{const id=a.id||'?';agents[id]={id,archetype:a.archetype||'unknown',karma:a.karma||0,post_count:a.post_count||0,comment_count:a.comment_count||0,cluster:a.cluster_id??a.cluster??0,dimensions:a.dna||a.dimensions||{},anomalies:am[id]||a.anomalies||[],name:a.name||id}});
   const clusters={},cl=Array.isArray(raw.clusters)?raw.clusters:Object.entries(raw.clusters).map(([k,v])=>({...v,id:+k}));
   cl.forEach(c=>{const id=c.id??Object.keys(clusters).length;const td=[];if(c.centroid)Object.entries(c.centroid).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach(([d,v])=>td.push({dimension:d,avg_value:v}));clusters[id]={id,label:c.name||c.label||'Cluster '+id,size:c.size||(c.members||[]).length,members:c.members||[],top_dimensions:td.length?td:(c.top_dimensions||[]),archetype_distribution:c.archetype_distribution||{}}});
@@ -143,7 +143,7 @@ async function init(){
 
 function renderStats(){
   const agents=Object.values(DATA.agents);
-  [{value:DATA._meta.total_agents,label:'Agents'},{value:Object.keys(DATA.clusters).length,label:'Clusters'},{value:agents.reduce((s,a)=>s+a.post_count,0).toLocaleString(),label:'Posts'},{value:agents.reduce((s,a)=>s+a.comment_count,0).toLocaleString(),label:'Comments'},{value:(DATA.anomalies||[]).length,label:'Anomalies'},{value:agents.reduce((s,a)=>s+a.karma,0).toLocaleString(),label:'Total Karma'}].forEach(s=>{
+  [{value:DATA._meta.total_agents,label:'Agents'},{value:Object.keys(DATA.clusters).length,label:'Clusters'},{value:agents.reduce((s,a)=>s+a.post_count,0).toLocaleString(),label:'Posts'},{value:agents.reduce((s,a)=>s+a.comment_count,0).toLocaleString(),label:'Comments'},{value:(Array.isArray(DATA.anomalies)?DATA.anomalies:Object.values(DATA.anomalies||{})).length,label:'Anomalies'},{value:agents.reduce((s,a)=>s+a.karma,0).toLocaleString(),label:'Total Karma'}].forEach(s=>{
     document.getElementById('stats-bar').innerHTML+=`<div class="stat-card"><div class="value">${s.value}</div><div class="label">${s.label}</div></div>`;
   });
 }
@@ -188,7 +188,7 @@ function renderClusters(){
 }
 
 function renderAnomalies(){
-  const list=document.getElementById('anomaly-list'),anomalies=DATA.anomalies||[];
+  const list=document.getElementById('anomaly-list'),anomalies=Array.isArray(DATA.anomalies)?DATA.anomalies:Object.values(DATA.anomalies||{});
   if(!anomalies.length){list.innerHTML='<p style="color:var(--text2)">No anomalies detected.</p>';return}
   list.innerHTML=anomalies.map(a=>{const agent=DATA.agents[a.agent_id]||{},td=(a.top_deviations||[]).slice(0,3);
     return`<div class="anomaly-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><span class="agent-name">${agent.name||a.agent_id}</span><span style="color:var(--text2);font-size:.8rem;margin-left:8px">${a.agent_id}</span></div><span style="color:var(--warn);font-size:.8rem">z=${a.z_score}</span></div><div style="font-size:.75rem;color:var(--text2);margin-top:4px">Archetype: ${a.archetype} | Distance: ${a.distance_from_archetype}</div><div class="detail">${a.explanation||''}</div>${td.map(d=>`<div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:.75rem"><span style="min-width:100px">${DL[d[0]]||d[0]}</span><div class="anomaly-bar" style="flex:1"><div class="fill" style="width:${Math.min(100,d[1]*200)}%"></div></div><span style="font-family:monospace">${d[1]}</span></div>`).join('')}</div>`}).join('');
